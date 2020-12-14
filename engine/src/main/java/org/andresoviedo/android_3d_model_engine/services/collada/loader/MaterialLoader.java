@@ -7,6 +7,7 @@ import org.andresoviedo.android_3d_model_engine.model.Material;
 import org.andresoviedo.android_3d_model_engine.services.collada.entities.JointData;
 import org.andresoviedo.android_3d_model_engine.services.collada.entities.MeshData;
 import org.andresoviedo.android_3d_model_engine.services.collada.entities.SkeletonData;
+import org.andresoviedo.android_3d_model_engine.services.collada.entities.SkinningData;
 import org.andresoviedo.util.xml.XmlNode;
 
 import java.util.ArrayList;
@@ -25,12 +26,12 @@ public class MaterialLoader {
         this.effectsData = effectsNode;
     }
 
-    public void loadMaterial(MeshData meshData){
+    public void loadMaterial(MeshData meshData) {
 
         // log event
-        Log.i("MaterialLoader", "Loading materials for " + meshData.getId() + " ("+ meshData.getName() +")...");
+        Log.i("MaterialLoader", "Loading materials for " + meshData.getId() + " (" + meshData.getName() + ")...");
 
-        int i=0;
+        int i = 0;
         for (Element element : meshData.getElements()) {
 
             // if no linked material in < mesh > do nothing
@@ -40,17 +41,17 @@ public class MaterialLoader {
             }
 
             // log event
-            Log.i("MaterialLoader", "Loading material '"+materialId+"' for element: "+i++);
+            Log.i("MaterialLoader", "Loading material '" + materialId + "' for element: " + i++);
 
             // parse material
             element.setMaterial(parseMaterial(materialId));
 
             // log event
-            Log.i("MaterialLoader", "Material '"+materialId+"' for element: "+(i++)+": "+element.getMaterial());
+            Log.i("MaterialLoader", "Material '" + materialId + "' for element: " + (i++) + ": " + element.getMaterial());
         }
     }
 
-    public void loadMaterialFromVisualScene(MeshData meshData, SkeletonData skeletonData){
+    public void loadMaterialFromVisualScene(MeshData meshData, SkeletonData skeletonData) {
 
         // if no joints do nothing
         if (skeletonData == null) return;
@@ -60,9 +61,9 @@ public class MaterialLoader {
         final String geometryName = meshData.getName();
 
         // log event
-        Log.i("MaterialLoader", "Loading materials for " + geometryId + " ("+geometryName+")...");
+        Log.i("MaterialLoader", "Loading materials for " + geometryId + " (" + geometryName + ")...");
 
-        int i=0;
+        int i = 0;
         for (Element element : meshData.getElements()) {
 
             // if no linked material in < mesh > do nothing
@@ -72,7 +73,7 @@ public class MaterialLoader {
             }
 
             // log event
-            Log.i("MaterialLoader", "Loading instance material '"+materialId+"' for element: "+i++);
+            Log.i("MaterialLoader", "Loading instance material '" + materialId + "' for element: " + i++);
 
             // parse material
             final Material material = parseInstanceMaterial(geometryId, geometryName, materialId, skeletonData);
@@ -82,9 +83,8 @@ public class MaterialLoader {
                 element.setMaterial(material);
 
                 // log event
-                Log.i("MaterialLoader", "Instance material '"+materialId+"' for element: "+(i++)+": "+element.getMaterial());
-            }
-            else {
+                Log.i("MaterialLoader", "Instance material '" + materialId + "' for element: " + (i++) + ": " + element.getMaterial());
+            } else {
                 // log event
                 Log.i("MaterialLoader", "Instance material '" + materialId + "' for element: " + (i++) + " not found");
             }
@@ -92,7 +92,7 @@ public class MaterialLoader {
     }
 
 
-    private Material parseInstanceMaterial(String geometryId, String geometryName, String material, SkeletonData skeletonData){
+    private Material parseInstanceMaterial(String geometryId, String geometryName, String material, SkeletonData skeletonData) {
         if (skeletonData != null) {
             JointData jointData = skeletonData.find(geometryId);
             if (jointData == null && geometryName != null) {
@@ -101,6 +101,70 @@ public class MaterialLoader {
             if (jointData != null && jointData.containsMaterial(material)) {
                 return parseMaterial(jointData.getMaterial(material));
             }
+        }
+        return null;
+    }
+
+    public void loadMaterialFromVisualScene2(MeshData meshData, SkeletonData skeletonData, SkinningData skinningData) {
+
+        // if no joints do nothing
+        if (skeletonData == null) return;
+
+        // get mesh id to update
+        final String geometryId = meshData.getId();
+        final String geometryName = meshData.getName();
+
+        // log event
+        Log.i("MaterialLoader", "Loading materials for " + geometryId + " (" + geometryName + ")...");
+
+        int i = 0;
+        for (Element element : meshData.getElements()) {
+
+            // if no linked material in < mesh > do nothing
+            final String materialId = element.getMaterialId();
+            if (materialId == null) {
+                continue;
+            }
+
+            // log event
+            Log.i("MaterialLoader", "Loading instance material '" + materialId + "' for element: " + i++);
+
+            // parse material
+            final Material material = parseInstanceMaterial2(geometryId, geometryName, materialId, skeletonData, skinningData);
+            if (material != null) {
+
+                // if there is instance material, overwrite
+                element.setMaterial(material);
+
+                // log event
+                Log.i("MaterialLoader", "Instance material '" + materialId + "' for element: " + (i++) + ": " + element.getMaterial());
+            } else {
+                // log event
+                Log.i("MaterialLoader", "Instance material '" + materialId + "' for element: " + (i++) + " not found");
+            }
+        }
+    }
+
+
+    /**
+     * this gets the material from the indirect instance_controller mesh reference
+     *
+     * @param geometryId
+     * @param geometryName
+     * @param material
+     * @param skeletonData
+     * @return
+     */
+    private Material parseInstanceMaterial2(String geometryId, String geometryName, String material, SkeletonData skeletonData, SkinningData skinningData) {
+        JointData jointData = skeletonData.find(geometryId);
+        if (jointData == null && geometryName != null) {
+            jointData = skeletonData.find(geometryName);
+        }
+        if (jointData == null){
+            jointData = skeletonData.find(skinningData.getControllerId());
+        }
+        if (jointData != null && jointData.containsMaterial(material)) {
+            return parseMaterial(jointData.getMaterial(material));
         }
         return null;
     }
@@ -167,7 +231,7 @@ public class MaterialLoader {
                 color = new float[]{Float.parseFloat(colorData[0]), Float.parseFloat(colorData[1]), Float.parseFloat(colorData[2]), Float
                         .parseFloat(colorData[3])};
                 alpha = Float.parseFloat(colorData[3]);
-                Log.v("MaterialLoader","Color: "+Arrays.toString(color));
+                Log.v("MaterialLoader", "Color: " + Arrays.toString(color));
             }
 
             // parse transparency
@@ -175,7 +239,7 @@ public class MaterialLoader {
                 if (transparency.getChild("float") != null) {
                     final float aFloat = Float.parseFloat(transparency.getChild("float").getData().replace(',', '.'));
                     alpha = aFloat;
-                    Log.v("MaterialLoader","Transparency: "+aFloat);
+                    Log.v("MaterialLoader", "Transparency: " + aFloat);
                 }
             }
 
@@ -196,7 +260,7 @@ public class MaterialLoader {
                 }
             }
 
-            if (color == null && textureFile == null){
+            if (color == null && textureFile == null) {
                 Log.v("MaterialLoader", "Color nor texture found: " + materialId);
                 return null;
             }
@@ -226,7 +290,7 @@ public class MaterialLoader {
         final List<String> ret = new ArrayList<>();
         try {
             final List<XmlNode> images = imagesNode.getChildren("image");
-            for (int i = 0; i< images.size(); i++){
+            for (int i = 0; i < images.size(); i++) {
                 ret.add(images.get(i).getChild("init_from").getData());
             }
         } catch (Exception e) {

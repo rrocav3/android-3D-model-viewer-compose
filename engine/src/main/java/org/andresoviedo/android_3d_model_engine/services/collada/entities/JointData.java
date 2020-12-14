@@ -21,6 +21,7 @@ public class JointData {
 	private final String name;
 	private final String sid;
 	private final String instance_geometry;
+	private final String instance_controller;
 	private final Map<String,String> materials;
 
 	// local transforms
@@ -45,7 +46,7 @@ public class JointData {
 	public JointData(String id, String name, String sid,
 					 float[] bindLocalMatrix, Float[] bindLocalScale, Float[] bindLocalRotation, Float[] bindLocalLocation,
 					 final float[] bindLocalTransform, final float[] bindTransform,
-					 String geometryId, Map<String, String> materials) {
+					 String geometryId, Map<String, String> materials, String controllerId) {
 		this.id = id;
 		this.name = name;
 		this.sid = sid;
@@ -61,6 +62,8 @@ public class JointData {
 
 		this.bindLocalTransform = bindLocalTransform;
 		this.bindTransform = bindTransform;
+
+		this.instance_controller = controllerId;
 	}
 
 	/**
@@ -93,6 +96,7 @@ public class JointData {
 		this.instance_geometry = id;
 		this.materials = null;
 
+		this.instance_controller = null;
 	}
 
 	public String getId() {
@@ -159,6 +163,8 @@ public class JointData {
 			return this;
 		} else if (id.equals(this.instance_geometry)){
 			return this;
+		} else if (id.equals(this.instance_controller)){
+			return this;
 		}
 
 		for (JointData childJointData : this.children) {
@@ -202,6 +208,9 @@ public class JointData {
 		return bindLocalTransform;
 	}
 
+	public String getInstance_controller() {
+		return instance_controller;
+	}
 
 	@Override
 	public String toString() {

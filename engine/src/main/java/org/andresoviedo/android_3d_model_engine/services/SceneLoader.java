@@ -192,6 +192,7 @@ public class SceneLoader implements LoadListener, EventListener {
         this.type = type;
         this.glView = glView;
 
+        // default light position is just in front of us (where we are - the camera)
         lightBulb.setLocation(new float[]{0, 0, DEFAULT_CAMERA_POSITION});
     }
 
@@ -215,8 +216,14 @@ public class SceneLoader implements LoadListener, EventListener {
         }
     }
 
+    /**
+     * this is a patch for Blender to rotate get Z-axis on top instead of default OpenGL (in front of)
+     */
     public void fixCoordinateSystem() {
-        final List<Object3DData> objects = getObjects();
+
+        // FIXME: we only fix camera when loading a single file (otherwise demo breaks)
+        if (this.uri == null) return;
+
         for (int i = 0; i < objects.size(); i++) {
             final Object3DData objData = objects.get(i);
             if (objData.getAuthoringTool() != null && objData.getAuthoringTool().toLowerCase().contains("blender")) {

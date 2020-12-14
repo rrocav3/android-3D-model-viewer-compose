@@ -401,18 +401,27 @@ public final class Text extends Widget {
 
     private String currentText = null;
 
+    private Dimensions dimensions;
+
     private Text(int columns, int rows) {
         super();
         this.columns = columns;
         this.rows = rows;
-        init();
-    }
-
-    private void init(){
         setVertexBuffer(IOUtils.createFloatBuffer(columns * rows * 12 * 3));
         setColorsBuffer(IOUtils.createFloatBuffer(columns * rows * 12 * 4));
-        setDimensions(new Dimensions(0,columns*0.5f,rows*0.7f,0,0,0));
+        this.dimensions = new Dimensions(0,columns*0.5f,rows*0.7f,0,0,0);
+        super.setDimensions(this.dimensions);
         Log.d("Text","Created text: "+ getDimensions());
+    }
+
+    @Override
+    public Dimensions getDimensions() {
+        return this.dimensions;
+    }
+
+    @Override
+    public Dimensions getCurrentDimensions() {
+        return this.dimensions.scale(getScaleX());
     }
 
     public static Text allocate(int columns, int rows){

@@ -26,8 +26,13 @@ import java.util.List;
  *
  * @author andresoviedo
  */
-public class Object3DData {
+public class Object3DData implements EventListener {
 
+
+    @Override
+    public boolean onEvent(EventObject event) {
+        return false;
+    }
 
     protected static class ChangeEvent extends EventObject {
         ChangeEvent(Object source) {
@@ -371,7 +376,7 @@ public class Object3DData {
         AndroidUtils.fireEvent(listeners, event);
     }
 
-    public void render(RendererFactory drawer, float[] lightPosInWorldSpace, float[] colorMask) {
+    public void render(RendererFactory drawer, Camera viewMatrix, float[] lightPosInWorldSpace, float[] colorMask) {
     }
 
     public boolean isVisible() {
@@ -709,7 +714,8 @@ public class Object3DData {
 
     protected void updateModelDimensions() {
         // FIXME: this breaks GUI
-        //this.currentDimensions = null;
+        // this.dimensions = null;
+        this.currentDimensions = null;
 
         /*final float[] location = new float[4];
         final float[] ret = new float[4];
@@ -795,7 +801,7 @@ public class Object3DData {
         return ret;
     }
 
-    void copy(Object3DData ret) {
+    public void copy(Object3DData ret) {
         ret.setId(this.getId());
         ret.setLocation(this.getLocation().clone());
         ret.setScale(this.getScale().clone());
@@ -809,6 +815,7 @@ public class Object3DData {
         ret.setElements(this.getElements());
         ret.setDrawMode(this.getDrawMode());
         ret.setDrawUsingArrays(this.isDrawUsingArrays());
+        ret.setVisible(this.isVisible);
     }
 
     @Override

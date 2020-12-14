@@ -1,30 +1,51 @@
 package org.andresoviedo.android_3d_model_engine.gui;
 
 import android.opengl.GLES20;
+import android.opengl.Matrix;
 import android.os.SystemClock;
 import android.util.Log;
 
 import org.andresoviedo.android_3d_model_engine.animation.JointTransform;
+import org.andresoviedo.android_3d_model_engine.drawer.Renderer;
+import org.andresoviedo.android_3d_model_engine.drawer.RendererFactory;
+import org.andresoviedo.android_3d_model_engine.model.Camera;
 import org.andresoviedo.android_3d_model_engine.model.Dimensions;
 import org.andresoviedo.android_3d_model_engine.model.Object3DData;
 import org.andresoviedo.util.event.EventListener;
+import org.andresoviedo.util.io.IOUtils;
 import org.andresoviedo.util.math.Math3DUtils;
 
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EventObject;
 import java.util.List;
 
-public abstract class Widget extends Object3DData implements EventListener {
+public class  Widget extends Object3DData implements EventListener {
+
+    protected final float[] projectionMatrix = new float[16];
+    protected final float[] viewMatrix = new float[16];
+    private final float[] cameraPosition = new float[]{0, 0, 1.1f};
+    protected int width;
+    protected int height;
+    //  protected float ratio;
+    protected boolean bindSceneViewMatrix = false;
+
+    protected static Widget of(Object3DData data) {
+        final Widget widget = new Widget();
+        data.copy(widget);
+        //widget.addWidget(data);
+        return widget;
+    }
 
     public static class ClickEvent extends EventObject {
 
-        private final Widget widget;
+        private final Object3DData widget;
         private final float x;
         private final float y;
         private final float z;
 
-        ClickEvent(Object source, Widget widget, float x, float y, float z) {
+        ClickEvent(Object source, Object3DData widget, float x, float y, float z) {
             super(source);
             this.widget = widget;
             this.x = x;
@@ -44,21 +65,21 @@ public abstract class Widget extends Object3DData implements EventListener {
             return z;
         }
 
-        public Widget getWidget() {
+        public Object3DData getWidget() {
             return widget;
         }
     }
 
     public static class MoveEvent extends EventObject {
 
-        private final Widget widget;
+        private final Object3DData widget;
         private final float x;
         private final float y;
         private final float z;
         private final float dx;
         private final float dy;
 
-        MoveEvent(Object source, Widget widget, float x, float y, float z, float dx, float dy) {
+        MoveEvent(Object source, Object3DData widget, float x, float y, float z, float dx, float dy) {
             super(source);
             this.widget = widget;
             this.x = x;
@@ -80,7 +101,7 @@ public abstract class Widget extends Object3DData implements EventListener {
             return z;
         }
 
-        public Widget getWidget() {
+        public Object3DData getWidget() {
             return widget;
         }
 
@@ -99,16 +120,21 @@ public abstract class Widget extends Object3DData implements EventListener {
     public static final int POSITION_RIGHT = 5;
     public static final int POSITION_TOP_RIGHT = 2;
     public static final int POSITION_BOTTOM = 7;
+    public static final int POSITION_BOTTOM_RIGHT = 3;
+    public static final int POSITION_BOTTOM_LEFT = 6;
+    public static final int POSITION_LEFT = 8;
 
     private static int counter = 0;
 
-    // we need this to calculate relative position
+    // we need this to calculate relative position (screen width / screen height)
     float ratio;
 
     final List<Widget> widgets = new ArrayList<>();
 
+    // This is the original position of the widget - to rollback animation
     private float[] initialPosition;
 
+    // This is the original position of the widget - to rollback animation
     float[] initialScale;
 
     {
@@ -119,6 +145,10 @@ public abstract class Widget extends Object3DData implements EventListener {
     }
 
     private Runnable animation;
+
+    public void clear(){
+        this.widgets.clear();
+    }
 
     @Override
     public Object3DData setColor(float[] color) {
@@ -222,8 +252,9 @@ public abstract class Widget extends Object3DData implements EventListener {
         // That is, -1+1 is 100% parent dimension
         Dimensions parentDim = getParent().getCurrentDimensions();
         float relScale = parentDim.getRelationTo(getCurrentDimensions());
-        Log.d("Widget","Relative scale ("+getId()+"): "+relScale);
+        Log.v("Widget","Relative scale ("+getId()+"): "+relScale);
         float[] newScale = Math3DUtils.multiply(scale, relScale);
+        Log.v("Widget","New scale ("+getId()+"): "+Arrays.toString(newScale));
 
         return super.setScale(newScale);
     }
@@ -246,74 +277,64 @@ public abstract class Widget extends Object3DData implements EventListener {
         return initialPosition;
     }
 
-    static float[] calculatePosition_2(int relativePosition, Dimensions dimensions, float newScale, float ratio){
-
-        float x, y, z = 0;
-        switch (relativePosition) {
-            case POSITION_TOP_LEFT:
-                x = -ratio;
-                y = 1 - dimensions.getHeight() * newScale;
-                break;
-            case POSITION_TOP:
-                x = -(dimensions.getWidth() * newScale / 2);
-                y = 1 - dimensions.getHeight() * newScale;
-                break;
-            case POSITION_TOP_RIGHT:
-                x = ratio - dimensions.getWidth() * newScale;
-                y = 1 - dimensions.getHeight()  * newScale;
-                break;
-            case POSITION_MIDDLE:
-                x = -(dimensions.getWidth() * newScale / 2);
-                y = -(dimensions.getHeight() * newScale / 2);
-                break;
-            case POSITION_RIGHT:
-                x = ratio -(dimensions.getWidth() * newScale);
-                y = -(dimensions.getHeight() * newScale / 2);
-                break;
-            case POSITION_BOTTOM:
-                x = -(dimensions.getWidth() * newScale / 2);
-                y = -1 + (dimensions.getHeight() * newScale / 2);
-                y -= (dimensions.getCenter()[1] * newScale);
-                break;
-            default:
-                throw new UnsupportedOperationException();
-        }
-        return new float[]{x, y, z};
-    }
-
+    /**
+     * Calculate final position taking into account the screen ratio (vertical or horizontal layout)
+     *
+     * @param relativePosition the widget's relative position to screen
+     * @param dimensions the widget's dimensions
+     * @param newScale the widget's scale
+     * @param ratio screen width ratio
+     * @return the final position of the widget in the screen
+     */
     static float[] calculatePosition(int relativePosition, Dimensions dimensions, float newScale, float ratio){
 
         float x, y, z = 0;
         switch (relativePosition) {
             case POSITION_TOP_LEFT:
-                x = -ratio;
-                y = 1 - dimensions.getHeight() * newScale;
-                Log.d("Widget","height:"+dimensions.getHeight()+", scale: "+newScale);
+                x = -ratio - dimensions.getMin()[0];
+                y = 1 - dimensions.getMax()[1];
+                z = -dimensions.getMax()[2];
                 break;
             case POSITION_TOP:
-                x = -(dimensions.getWidth() * newScale / 2);
-                y = 1 - dimensions.getHeight() * newScale;
+                x = -dimensions.getWidth()/2 - dimensions.getMin()[0];
+                y = 1 - dimensions.getMax()[1];
                 break;
             case POSITION_TOP_RIGHT:
-                x = ratio - dimensions.getWidth() * newScale;
-                y = 1 - dimensions.getHeight()  * newScale;
+                x = ratio - dimensions.getMax()[0];
+                y = 1 - dimensions.getMax()[1];
                 break;
             case POSITION_MIDDLE:
-                x = -(dimensions.getWidth() * newScale / 2);
-                y = -(dimensions.getHeight() * newScale / 2);
+                x = -dimensions.getWidth()/2 - dimensions.getMin()[0];
+                y = -dimensions.getHeight()/2 - dimensions.getMin()[1];
                 break;
             case POSITION_RIGHT:
-                x = ratio -(dimensions.getWidth() * newScale);
-                y = -(dimensions.getHeight() * newScale / 2);
+                x = ratio -dimensions.getWidth();
+                x -= dimensions.getMin()[0];
+                y = -dimensions.getCenter()[1];
                 break;
             case POSITION_BOTTOM:
-                x = -(dimensions.getWidth() * newScale / 2);
-                y = -1 + (dimensions.getHeight() * newScale / 2);
-                y -= (dimensions.getCenter()[1] * newScale);
+                x = -dimensions.getWidth()/2 - dimensions.getMin()[0];
+                y = -1 - dimensions.getMin()[1];
+                break;
+            case POSITION_BOTTOM_RIGHT:
+                x = ratio -dimensions.getWidth();
+                x -= dimensions.getMin()[0];
+                y = -1 - dimensions.getMin()[1];
+                break;
+            case POSITION_BOTTOM_LEFT:
+                x = -ratio - dimensions.getMin()[0];
+                y = -1 - dimensions.getMin()[1];
+                break;
+            case POSITION_LEFT:
+                x = -ratio + dimensions.getWidth();
+                x += dimensions.getMin()[0];
+                y = dimensions.getHeight()/2;
+                y += dimensions.getMin()[1];
                 break;
             default:
                 throw new UnsupportedOperationException();
         }
+        Log.d("Widget","Final position: "+ Arrays.toString(new float[]{x,y,z})+", dimensions:"+dimensions+", scale: "+newScale);
         return new float[]{x, y, z};
     }
 
@@ -369,17 +390,89 @@ public abstract class Widget extends Object3DData implements EventListener {
         return new float[]{x,y,z};
     }
 
+    /**
+     * @param width horizontal screen pixels
+     * @param height vertical screen pixels
+     */
+    public void setSize(int width, int height) {
+        this.width = width;
+        this.height = height;
+        this.ratio = (float) width / height;
+
+        // setup view & projection
+        Matrix.setLookAtM(viewMatrix, 0,
+                cameraPosition[0], cameraPosition[1], cameraPosition[2],
+                0, 0, 0,
+                0, 1, 0);
+        Matrix.orthoM(projectionMatrix, 0, -ratio, ratio, -1, 1, 1, 10);
+
+        FloatBuffer vertexBuffer = IOUtils.createFloatBuffer(5 * 3);
+        vertexBuffer.put(-ratio).put(-1).put(-1);
+        vertexBuffer.put(+ratio).put(-1).put(-1);
+        vertexBuffer.put(+ratio).put(1).put(-1);
+        vertexBuffer.put(-ratio).put(1).put(-1);
+        vertexBuffer.put(-ratio).put(-1).put(-1);
+        setVertexBuffer(vertexBuffer);
+
+        setVisible(true);
+
+    }
+
+    public void setBindSceneViewMatrix(boolean bind){
+        this.bindSceneViewMatrix = bind;
+    }
+
+    public void render(RendererFactory rendererFactory, Camera viewMatrix, float[] lightPosInWorldSpace, float[] colorMask) {
+        super.render(rendererFactory, viewMatrix, lightPosInWorldSpace, colorMask);
+        for (int i = 0; i < widgets.size(); i++) {
+            renderWidget(rendererFactory, viewMatrix, widgets.get(i), lightPosInWorldSpace, colorMask);
+        }
+    }
+
+    private void renderWidget(RendererFactory rendererFactory, Camera viewMatrix, Widget widget, float[] lightPosInWorldSpace, float[]
+            colorMask) {
+
+        // if widget is now visible don't draw it
+        if (!widget.isVisible()) return;
+
+        // run animation on widget
+        if (widget instanceof Widget) {
+            ((Widget)widget).onDrawFrame();
+        }
+
+        // get drawer for this widget
+        Renderer drawer = rendererFactory.getDrawer(widget, false, false, false, false, true);
+
+
+        GLES20.glLineWidth(2.0f);
+
+
+        if (widget.bindSceneViewMatrix) {
+            float[] transform = new float[16];
+            Matrix.setLookAtM(transform, 0,
+                    0, 0, 0,
+                    -viewMatrix.getxPos(), -viewMatrix.getyPos(), -viewMatrix.getzPos(),
+                    viewMatrix.getxUp() - viewMatrix.getxPos(), viewMatrix.getyUp() - viewMatrix.getyPos(), viewMatrix.getzUp() - viewMatrix.getzPos());
+            widget.setBindTransform(transform);
+        }
+
+        drawer.draw(widget, projectionMatrix, this.viewMatrix, -1, lightPosInWorldSpace, colorMask, cameraPosition);
+    }
+
     @Override
     public boolean onEvent(EventObject event) {
         return true;
     }
 
-    public void setRatio(float ratio){
-        this.ratio = ratio;
-    }
-
+    // set position based on layout:
+    // top-left, top-middle, top-right       =   0 1 2
+    // middle-left, middle, middle-right     =   3 4 5
+    // bottom-left, bottom, bottom-right     =   6 7 8
     public void addWidget(Widget widget) {
         this.widgets.add(widget);
+        if (widget instanceof Widget){
+            ((Widget) widget).ratio = ratio;
+        }
         addListener(widget);
         if (widget.getParent() == null) widget.setParent(this);
         Log.i("Widget","New widget: "+widget);

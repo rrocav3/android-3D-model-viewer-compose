@@ -9,6 +9,8 @@ import org.andresoviedo.android_3d_model_engine.gui.Menu3D;
 import org.andresoviedo.android_3d_model_engine.gui.Rotator;
 import org.andresoviedo.android_3d_model_engine.gui.Text;
 import org.andresoviedo.android_3d_model_engine.gui.Widget;
+import org.andresoviedo.android_3d_model_engine.model.Object3DData;
+import org.andresoviedo.android_3d_model_engine.objects.Axis;
 import org.andresoviedo.android_3d_model_engine.services.SceneLoader;
 import org.andresoviedo.android_3d_model_engine.view.ModelRenderer;
 import org.andresoviedo.android_3d_model_engine.view.ModelSurfaceView;
@@ -46,9 +48,24 @@ final class ModelViewerGUI extends GUI {
 
         super.setSize(width, height);
         try {
+            super.clear();
+
             initFPS();
             //initMenu();
             //initMenu2();
+
+            // add axis on top-right
+            Widget axis = Widget.of(Axis.build(0.15f));
+            axis.setVisible(true);
+            axis.setParent(this);
+            //axis.setColor(new float[]{1,0,1,1});
+            axis.setRelativeScale(new float[]{0.05f,0.05f,0.05f});
+
+            addWidget(axis);
+
+            axis.setPosition(POSITION_TOP_RIGHT);
+
+            axis.setBindSceneViewMatrix(true);
         }catch (Exception e){
             Log.e("ModelViewerGUI",e.getMessage(),e);
             throw new RuntimeException(e);
@@ -169,7 +186,7 @@ final class ModelViewerGUI extends GUI {
             }
         } else if (event instanceof GUI.ClickEvent) {
             GUI.ClickEvent clickEvent = (GUI.ClickEvent) event;
-            Widget widget = clickEvent.getWidget();
+            Object3DData widget = clickEvent.getWidget();
 
             Log.i("ModelViewerGUI","Click... widget: "+widget.getId());
 

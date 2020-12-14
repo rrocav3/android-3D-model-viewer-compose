@@ -32,13 +32,14 @@ public class SkinLoader {
 	public Map<String, SkinningData> loadSkinData() {
 		Map<String, SkinningData> ret = new HashMap<>();
 		for (XmlNode controller : library_controllers.getChildren("controller")) {
-			XmlNode skinningData = controller.getChild("skin");
-			String skinId = skinningData.getAttribute("source").substring(1);
+			final String controllerId = controller.getAttribute("id");
+			final XmlNode skinningData = controller.getChild("skin");
+			final String skinId = skinningData.getAttribute("source").substring(1);
 			Log.i("SkinLoader", "Loading skin... " + skinId);
 
 			// bind shape matrix
 			float[] bindShapeMatrix = null;
-			XmlNode bindShapeMatrixNode = skinningData.getChild("bind_shape_matrix");
+			final XmlNode bindShapeMatrixNode = skinningData.getChild("bind_shape_matrix");
 			if (bindShapeMatrixNode != null) {
 				float[] bind_shape_matrix_data = Math3DUtils.parseFloat(bindShapeMatrixNode.getData().trim().split("\\s+"));
 				bindShapeMatrix = new float[16];
@@ -77,7 +78,7 @@ public class SkinLoader {
 			}
 
 			Log.i("SkinLoader", "Controller loaded: " + controller.getAttribute("id"));
-			SkinningData skinData = new SkinningData(skinId, bindShapeMatrix, jointNames, vertexWeights, inverseBindMatrix);
+			SkinningData skinData = new SkinningData(controllerId, skinId, bindShapeMatrix, jointNames, vertexWeights, inverseBindMatrix);
 			ret.put(skinId, skinData);
 
 			// add also as controller id (to avoid refactoring right now)

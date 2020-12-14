@@ -88,7 +88,7 @@ public class ModelRenderer implements GLSurfaceView.Renderer {
     // grid
     private static final float GRID_WIDTH = 100f;
     private static final float GRID_SIZE = 10f;
-    private static final float[] GRID_COLOR = {0.25f, 0.25f, 0.25f, 0.5f};
+    private static final float[] GRID_COLOR = {0.25f, 0.25f, 0.25f, 0.75f};
 
     // blending
     private static final float[] BLENDING_MASK_DEFAULT = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -170,8 +170,8 @@ public class ModelRenderer implements GLSurfaceView.Renderer {
     {
         extras.add(axis);
         extras.add(gridx);
-        extras.add(gridy);
-        extras.add(gridz);
+        //extras.add(gridy);
+        //extras.add(gridz);
     }
 
     // 3D stereoscopic matrix (left & right camera)
@@ -191,7 +191,7 @@ public class ModelRenderer implements GLSurfaceView.Renderer {
 
     // skybox
     private boolean isDrawSkyBox = true;
-    private int isUseskyBoxId = 0;
+    private int isUseskyBoxId = -2;
     private final float[] projectionMatrixSkyBox = new float[16];
     private final float[] viewMatrixSkyBox = new float[16];
     private SkyBox[] skyBoxes = null;
@@ -455,6 +455,7 @@ public class ModelRenderer implements GLSurfaceView.Renderer {
         // draw environment
         int skyBoxId = isUseskyBoxId;
         if (skyBoxId == -3){
+            GLES20.glClearColor(backgroundColor[0], backgroundColor[1], backgroundColor[2], backgroundColor[3]);
             // draw all extra objects
             for (int i = 0; i < extras.size(); i++) {
                 drawObject(viewMatrix, projectionMatrix, lightPosInWorldSpace, colorMask, cameraPosInWorldSpace, false, false, false, false, false, extras, i);
@@ -677,7 +678,8 @@ public class ModelRenderer implements GLSurfaceView.Renderer {
                     drawerObject.draw(objData, projectionMatrix, viewMatrix
                             , GLES20.GL_POINTS, objData.getDrawSize(),
                             textureId, lightPosInWorldSpace, colorMask, cameraPosInWorldSpace);
-                    objData.render(drawer, lightPosInWorldSpace, colorMask);
+                    // fixme: fix for steresoscopic - 2 cameras
+                    objData.render(drawer, scene.getCamera(), lightPosInWorldSpace, colorMask);
                 }
 
                 // draw skeleton
@@ -709,7 +711,7 @@ public class ModelRenderer implements GLSurfaceView.Renderer {
                     }
                     drawerObject.draw(objData, projectionMatrix, viewMatrix,
                             textureId, lightPosInWorldSpace, colorMask, cameraPosInWorldSpace);
-                    objData.render(drawer, lightPosInWorldSpace, colorMask);
+                    objData.render(drawer, scene.getCamera(), lightPosInWorldSpace, colorMask);
                 }
             }
 

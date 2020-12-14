@@ -257,42 +257,6 @@ public final class ColladaLoader {
                 Log.e("ColladaLoaderTask", "Error loading visual scene", ex);
             }
 
-
-            // load materials
-            Log.i("ColladaLoaderTask", "--------------------------------------------------");
-            Log.i("ColladaLoaderTask", "Loading textures...");
-            Log.i("ColladaLoaderTask", "--------------------------------------------------");
-            callback.onProgress("Loading textures...");
-            try {
-                for (int i = 0; i < meshDatas.size(); i++) {
-                    final MeshData meshData = meshDatas.get(i);
-                    for (int e = 0; e < meshData.getElements().size(); e++) {
-                        final Element element = meshData.getElements().get(e);
-                        if (element.getMaterial() != null && element.getMaterial().getTextureFile() != null) {
-                            final String textureFile = element.getMaterial().getTextureFile();
-                            // log event
-                            Log.i("ColladaLoaderTask", "Reading texture file... " + textureFile);
-
-                            // read texture data
-                            try (InputStream stream = ContentUtils.getInputStream(textureFile)) {
-
-                                // read data
-                                element.getMaterial().setTextureData(IOUtils.read(stream));
-
-                                // log event
-                                Log.i("ColladaLoaderTask", "Texture linked... " + element.getMaterial().getTextureData().length + " (bytes)");
-
-                            } catch (Exception ex) {
-                                Log.e("ColladaLoaderTask", String.format("Error reading texture file: %s", ex.getMessage()));
-                            }
-                        }
-                    }
-                }
-            } catch (Exception ex) {
-                Log.e("ColladaLoaderTask", "Error loading materials", ex);
-            }
-
-
             // load skinning data
             Map<String, SkinningData> skins = null;
             try {
@@ -379,7 +343,60 @@ public final class ColladaLoader {
                 Log.e("ColladaLoaderTask", "Error updating joint data", ex);
             }
 
-            //if (true) return ret;
+
+            // load visual scene
+            Log.i("ColladaLoaderTask", "--------------------------------------------------");
+            Log.i("ColladaLoaderTask", "Loading textures 2...");
+            Log.i("ColladaLoaderTask", "--------------------------------------------------");
+            callback.onProgress("Loading textures 2...");
+
+            try {
+                // bind instance materials
+                final MaterialLoader materialLoader = new MaterialLoader(xml.getChild("library_materials"),
+                        xml.getChild("library_effects"), xml.getChild("library_images"));
+                for (int i = 0; i < allMeshes.size(); i++) {
+                    final MeshData meshData = allMeshes.get(i);
+                    final AnimatedModel data3D = (AnimatedModel) ret.get(i);
+                    materialLoader.loadMaterialFromVisualScene2(meshData, skeletons.get(meshData.getId()), skins.get(meshData.getId()));
+
+                }
+            } catch (Exception ex) {
+                Log.e("ColladaLoaderTask", "Error updating textures :(", ex);
+            }
+
+            // load textures
+            Log.i("ColladaLoaderTask", "--------------------------------------------------");
+            Log.i("ColladaLoaderTask", "Loading textures...");
+            Log.i("ColladaLoaderTask", "--------------------------------------------------");
+            callback.onProgress("Loading textures...");
+            try {
+                for (int i = 0; i < meshDatas.size(); i++) {
+                    final MeshData meshData = meshDatas.get(i);
+                    for (int e = 0; e < meshData.getElements().size(); e++) {
+                        final Element element = meshData.getElements().get(e);
+                        if (element.getMaterial() != null && element.getMaterial().getTextureFile() != null) {
+                            final String textureFile = element.getMaterial().getTextureFile();
+                            // log event
+                            Log.i("ColladaLoaderTask", "Reading texture file... " + textureFile);
+
+                            // read texture data
+                            try (InputStream stream = ContentUtils.getInputStream(textureFile)) {
+
+                                // read data
+                                element.getMaterial().setTextureData(IOUtils.read(stream));
+
+                                // log event
+                                Log.i("ColladaLoaderTask", "Texture linked... " + element.getMaterial().getTextureData().length + " (bytes)");
+
+                            } catch (Exception ex) {
+                                Log.e("ColladaLoaderTask", String.format("Error reading texture file: %s", ex.getMessage()));
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                Log.e("ColladaLoaderTask", "Error loading materials", ex);
+            }
 
             // parse animation
             try {

@@ -34,6 +34,7 @@ public class Dimensions {
         this.bottomPt = bottomPt;
         this.nearPt = nearPt;
         this.farPt = farPt;
+        this.initialized  = true;
         refresh();
     }
 

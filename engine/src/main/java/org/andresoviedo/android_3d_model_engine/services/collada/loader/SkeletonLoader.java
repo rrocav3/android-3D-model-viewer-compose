@@ -216,10 +216,14 @@ public class SkeletonLoader {
 		String nodeSid = jointNode.getAttribute("sid");
 		String nodeId = jointNode.getAttribute("id");
 		String geometryId = null;
+		String controllerId = null;
 		Map<String,String> materials = new HashMap<>();
 		XmlNode instance_geometry_node = jointNode.getChild("instance_geometry");
 		if (instance_geometry_node == null){
 			instance_geometry_node = jointNode.getChild("instance_controller");
+			if (instance_geometry_node != null){
+				controllerId = instance_geometry_node.getAttribute("url").substring(1);
+			}
 		}
 		if (instance_geometry_node != null){
 			if (instance_geometry_node.getAttribute("url") != null) {
@@ -260,8 +264,8 @@ public class SkeletonLoader {
        		Matrix.multiplyMM(bindTransform, 0, parent.getBindTransform(), 0, bindLocalTransform, 0);
 		}
 
-        return new JointData(nodeId, nodeName, nodeSid, bindLocalMatrix, bindLocalScale, bindLocalRotation, bindLocalLocation, bindLocalTransform, bindTransform, geometryId, materials
-		);
+        return new JointData(nodeId, nodeName, nodeSid, bindLocalMatrix, bindLocalScale, bindLocalRotation, bindLocalLocation, bindLocalTransform, bindTransform, geometryId, materials,
+		controllerId);
 	}
 
 	public void updateJointData(Map<String, SkinningData> skinningDataMap, Map<String,SkeletonData> skeletons) {

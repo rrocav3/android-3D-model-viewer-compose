@@ -171,7 +171,7 @@ public class DemoLoaderTask extends LoaderTask {
                 Object3DData obj53 = new ColladaLoader().load(new URI("android://org.andresoviedo.dddmodel2/assets/models/cowboy.dae"), new LoadListenerAdapter(){
                     @Override
                     public void onLoad(Object3DData obj53) {
-                        obj53.setLocation(new float[] { 0f, -1f, 1f});
+                        obj53.setLocation(new float[] { 0f, -1f, 2f});
                         obj53.setColor(new float[] { 1.0f, 1.0f, 1f, 1.0f });
                         obj53.setRotation(new float[]{-90,0,0});
                         Rescaler.rescale(obj53, 2f);
